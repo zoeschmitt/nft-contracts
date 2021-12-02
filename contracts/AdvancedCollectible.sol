@@ -3,18 +3,21 @@
 
 // SPDX-License-Identifier: MIT
 pragma solidity 0.6.6;
+
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@chainlink/contracts/src/v0.6/VRFConsumerBase.sol"; // for verifiably random nft
+import "@chainlink/contracts/src/v0.6/VRFConsumerBase.sol";
 
 contract AdvancedCollectible is ERC721, VRFConsumerBase {
     uint256 public tokenCounter;
     bytes32 public keyhash;
     uint256 public fee;
     enum Breed {
-        PUG, SHIBA_INU, ST_BERNARD
+        PUG,
+        SHIBA_INU,
+        ST_BERNARD
     }
-    mapping(uint256 => Breed) tokenIdToBreed;
-    mapping(bytes32 => address) requestIdToSender;
+    mapping(uint256 => Breed) public tokenIdToBreed;
+    mapping(bytes32 => address) public requestIdToSender;
     event requestedCollectible(bytes32 indexed requestId, address requester);
     event breedAssigned(uint256 indexed tokenId, Breed breed);
 
@@ -35,12 +38,14 @@ contract AdvancedCollectible is ERC721, VRFConsumerBase {
 
     function createCollectible() public returns (bytes32) {
         bytes32 requestId = requestRandomness(keyhash, fee);
-        // need this mapping bc if not the VRFCoordinator would always be the msg.sender in fulfillRandomness.
         requestIdToSender[requestId] = msg.sender;
         emit requestedCollectible(requestId, msg.sender);
-    } 
+    }
 
-    function fulfillRandomness(bytes32 requestId, uint256 randomNumber) internal override {
+    function fulfillRandomness(bytes32 requestId, uint256 randomNumber)
+        internal
+        override
+    {
         Breed breed = Breed(randomNumber % 3);
         uint256 newTokenId = tokenCounter;
         tokenIdToBreed[newTokenId] = breed;
@@ -50,9 +55,12 @@ contract AdvancedCollectible is ERC721, VRFConsumerBase {
         tokenCounter = tokenCounter + 1;
     }
 
-    function setTokenURI(uint256 tokenId, string memory  _tokenURI) public {
-        // checks owner of the erc721 token
-        require(_isApprovedOrOwner(_msgSender(), tokenId), "ERC721 caller is not owner or approved");
+    function setTokenURI(uint256 tokenId, string memory _tokenURI) public {
+        // pug, shiba inu, st bernard
+        require(
+            _isApprovedOrOwner(_msgSender(), tokenId),
+            "ERC721: caller is not owner no approved"
+        );
         _setTokenURI(tokenId, _tokenURI);
     }
 }

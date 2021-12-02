@@ -1,16 +1,23 @@
-from scripts.helpful_scripts import get_account,  OPENSEA_URL
-from brownie import SimpleCollectible
-sample_token_uri = "https://ipfs.io/ipfs/QmYx6GsYAKnNzZ9A6NvEKV9nf1VaDzJrqDR23Y8YSkebLU?filename=shiba-inu.png"
+from scripts.helpful_scripts import fund_with_link, get_account, OPENSEA_URL, get_contract
+from brownie import AdvancedCollectible, network, config
 
 
 def deploy_and_create():
     account = get_account()
-    simple_collectible = SimpleCollectible.deploy({"from": account})
-    txn = simple_collectible.createCollectible(sample_token_uri, {"from": account})
-    txn.wait(1)
-    print(f"Awesome, you can view your NFT at {OPENSEA_URL.format(simple_collectible.address, simple_collectible.tokenCounter() - 1)}")
-    print("Please wait up to 20 min, and hit the refresh metadata button.")
-    return simple_collectible
+    # We want to be able to use the deployed contracts if we are on a
+    # testnet. Otherwise deploy mocks and use rinkeby (opensea only works w rinkeby)
+    advanced_collectible = AdvancedCollectible.deploy(
+        get_contract("vrf_coordinator"),
+        get_contract("link_token"),
+        config["networks"][network.show_active()]["keyhash"],
+        config["networks"][network.show_active()]["fee"],
+        {"from": account},
+    )
+    fund_with_link(advanced_collectible.address)
+    creating_tx = advanced_collectible.createCollectible({"from": account})
+    creating_tx.wait(1)
+    print("New token has been created!")
+    return advanced_collectible, creating_tx
 
 def main():
     deploy_and_create()
